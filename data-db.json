@@ -1,3 +1,20 @@
 {
-  "tickets": []
+  "data-db": [
+    {
+      "id": "101",
+      "title": "Error de conexión en Base de Datos",
+      "description": "El servidor principal está rechazando las solicitudes de la API.",
+      "type": "error",
+      "assignedTo": "luis",
+      "status": "open"
+    },
+    {
+      "id": "102",
+      "title": "Configurar nueva Laptop",
+      "description": "Instalar herramientas de desarrollo para el nuevo diseñador.",
+      "type": "tarea",
+      "assignedTo": "pedro",
+      "status": "open"
+    }
+  ]
 }
