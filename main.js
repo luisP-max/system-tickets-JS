@@ -33,7 +33,7 @@ function renderLogin() {
     `;
 
     // Escuchamos el envío del formulario
-    
+
     document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -246,7 +246,7 @@ function renderCreateTicketForm() {
             assignedTo: "unassigned",
             createdBy: user.username
         };
-
+//ERROR AL DATA 3002
         try {
             await axios.post('http://localhost:3002/data-db', newTicket);
             alert("Ticket created successfully!");
