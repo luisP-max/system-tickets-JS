@@ -30,7 +30,10 @@ function renderDashboard() {
                             <h2 class="text-2xl font-bold text-slate-800">Workspace</h2>
                             <p class="text-gray-600">Manage support cases according to your profile permissions.</p>
                         </div>
-                        </div>
+                        <button id="create-ticket-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow transition">
+                            + Create Ticket
+                        </button>
+                    </div>
                     
                     <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         </div>
@@ -45,33 +48,35 @@ function renderDashboard() {
         renderLogin();
     });
 
-    // ¡NUEVO! Ejecutamos la función para traer los tickets del puerto 3002
+    // Escuchamos el botón de Crear Ticket
+    document.getElementById('create-ticket-btn').addEventListener('click', () => {
+        renderCreateTicketForm();
+    });
+
+    // Ejecutamos la función para traer los tickets del puerto 3002
     fetchAndRenderTickets(user);
 }
 
 // ==========================================
-// FUNCIÓN NUEVA: SOLICITAR Y PINTAR TICKETS
+// FUNCIÓN: SOLICITAR Y PINTAR TICKETS (Puerto 3002)
 // ==========================================
 async function fetchAndRenderTickets(user) {
     const ticketsContainer = document.getElementById('tickets-container');
     
     try {
-        // 1. Hacemos la petición al puerto 3002 (tickets.json)
-        const response = await axios.get('http://localhost:3002/tickets');
+        // Hacemos la petición al puerto 3002 (data-db)
+        const response = await axios.get('http://localhost:3002/data-db');
         const allTickets = response.data;
 
-        // 2. Filtramos los tickets según las reglas de negocio (Roles)
+        // Filtramos los tickets según las reglas de negocio (Roles)
         let filteredTickets = [];
         
         if (user.role === 'admin') {
-            // El administrador ve absolutamente todo
             filteredTickets = allTickets;
         } else if (user.role === 'tecnico') {
-            // El técnico solo ve los tickets donde su username coincida con el asignado
             filteredTickets = allTickets.filter(ticket => ticket.assignedTo === user.username);
         }
 
-        // 3. Si no hay tickets para mostrar, ponemos un aviso limpio
         if (filteredTickets.length === 0) {
             ticketsContainer.innerHTML = `
                 <div class="col-span-full bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500 italic">
@@ -81,7 +86,6 @@ async function fetchAndRenderTickets(user) {
             return;
         }
 
-        // 4. Limpiamos el contenedor y mapeamos las tarjetas con Tailwind CSS
         ticketsContainer.innerHTML = '';
         filteredTickets.forEach(ticket => {
             ticketsContainer.innerHTML += `
@@ -118,10 +122,9 @@ async function fetchAndRenderTickets(user) {
 }
 
 // ==========================================
-// FUNCIÓN NUEVA: MOSTRAR FORMULARIO DE CREACIÓN
+// FUNCIÓN: MOSTRAR FORMULARIO DE CREACIÓN
 // ==========================================
 function renderCreateTicketForm() {
-    // Reemplazamos el contenido del contenedor de tickets por el formulario
     const ticketsContainer = document.getElementById('tickets-container');
     
     ticketsContainer.innerHTML = `
@@ -131,7 +134,7 @@ function renderCreateTicketForm() {
             <form id="create-ticket-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Ticket Title</label>
-                    <input type="text" id="ticket-title" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: My computer won't turn on">
+                    <input type="text" id="ticket-title" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: No funciona el internet">
                 </div>
                 
                 <div>
@@ -145,7 +148,7 @@ function renderCreateTicketForm() {
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea id="ticket-description" rows="4" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe the issue in detail..."></textarea>
+                    <textarea id="ticket-description" rows="4" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe el problema detalladamente..."></textarea>
                 </div>
                 
                 <div class="flex justify-end space-x-3 pt-2">
@@ -160,43 +163,46 @@ function renderCreateTicketForm() {
         </div>
     `;
 
-    // Botón Cancelar: vuelve a cargar el Dashboard normal
     document.getElementById('cancel-ticket-btn').addEventListener('click', () => {
         renderDashboard();
     });
 
-    // Escuchamos el envío del formulario
     document.getElementById('create-ticket-form').addEventListener('submit', async (e) => {
-        e.preventDefault(); // Evitamos que la página se recargue
+        e.preventDefault();
 
-        // Capturamos los datos que escribió el usuario
         const title = document.getElementById('ticket-title').value;
         const type = document.getElementById('ticket-type').value;
         const description = document.getElementById('ticket-description').value;
-        
-        // Obtenemos quién está creando el ticket desde el localStorage
         const user = JSON.parse(localStorage.getItem('currentUser'));
 
-        // Creamos el objeto del nuevo ticket
         const newTicket = {
             title: title,
             type: type,
             description: description,
             status: "open",
-            assignedTo: "unassigned", // Por defecto inicia sin técnico asignado
-            createdBy: user.username   // Guardamos quién lo reportó
+            assignedTo: "unassigned",
+            createdBy: user.username
         };
 
         try {
-            // 🚀 Enviamos el ticket al puerto 3002 con el método POST
-            await axios.post('http://localhost:3002/tickets', newTicket);
-            
+            await axios.post('http://localhost:3002/data-db', newTicket);
             alert("Ticket created successfully!");
-            renderDashboard(); // Volvemos al panel para ver el nuevo ticket listado
-            
+            renderDashboard();
         } catch (error) {
             console.error("Error creating ticket:", error);
-            alert("Failed to create ticket. Is the server on port 3002 running?");
+            alert("Failed to create ticket.");
         }
     });
 }
+
+// ==========================================
+// INICIALIZACIÓN DE LA APLICACIÓN (ARRANQUE)
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (user) {
+        renderDashboard();
+    } else {
+        renderLogin();
+    }
+});
