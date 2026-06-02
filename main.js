@@ -1,11 +1,9 @@
-// ==========================================
 // CONFIGURACIÓN INICIAL Y VARIABLES GLOBALES
-// ==========================================
+
 const appContainer = document.getElementById('app');
 
-// ==========================================
 // VISTA 1: PANTALLA DE INICIO DE SESIÓN (LOGIN)
-// ==========================================
+
 function renderLogin() {
     appContainer.innerHTML = `
         <div class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
@@ -35,6 +33,7 @@ function renderLogin() {
     `;
 
     // Escuchamos el envío del formulario
+    
     document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -64,9 +63,8 @@ function renderLogin() {
     });
 }
 
-// ==========================================
 // VISTA 2: PANEL PRINCIPAL (DASHBOARD)
-// ==========================================
+
 function renderDashboard() {
     const user = JSON.parse(localStorage.getItem('currentUser'));
 
@@ -122,12 +120,12 @@ function renderDashboard() {
     });
 
     // Cargamos los tickets reales
+
     fetchAndRenderTickets(user);
 }
 
-// ==========================================
 // FUNCIÓN: SOLICITAR Y PINTAR TICKETS (Puerto 3002)
-// ==========================================
+
 async function fetchAndRenderTickets(user) {
     const ticketsContainer = document.getElementById('tickets-container');
     
@@ -187,9 +185,8 @@ async function fetchAndRenderTickets(user) {
     }
 }
 
-// ==========================================
 // FUNCIÓN: MOSTRAR FORMULARIO DE CREACIÓN
-// ==========================================
+
 function renderCreateTicketForm() {
     const ticketsContainer = document.getElementById('tickets-container');
     
@@ -261,9 +258,8 @@ function renderCreateTicketForm() {
     });
 }
 
-// ==========================================
 // INICIALIZACIÓN DE LA APLICACIÓN (ARRANQUE)
-// ==========================================
+
 document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user) {
