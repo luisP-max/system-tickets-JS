@@ -1,0 +1,28 @@
+{
+  "tickets": [
+    {
+      "id": "101",
+      "title": "Error de conexión en Base de Datos",
+      "description": "El servidor principal está rechazando las solicitudes de la API.",
+      "type": "error",
+      "assignedTo": "luis",
+      "status": "open"
+    },
+    {
+      "id": "102",
+      "title": "Configurar nueva Laptop",
+      "description": "Instalar herramientas de desarrollo para el nuevo diseñador.",
+      "type": "tarea",
+      "assignedTo": "pedro",
+      "status": "open"
+    },
+    {
+      "id": "103",
+      "title": "Fallo en la Impresora del Piso 2",
+      "description": "La impresora no reconoce el tóner negro recién cambiado.",
+      "type": "soporte",
+      "assignedTo": "luis",
+      "status": "closed"
+    }
+  ]
+}

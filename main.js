@@ -1,72 +1,16 @@
-// 1. Seleccionamos el contenedor principal
-const appContainer = document.getElementById('app');
-
-// ==========================================
-// VISTA 1: FORMULARIO DE LOGIN (SIGN IN)
-// ==========================================
-function renderLogin() {
-    appContainer.innerHTML = `
-        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md mx-auto mt-20">
-            <h2 class="text-3xl font-bold text-center text-slate-800 mb-6">Sign In</h2>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="username" placeholder="Enter your username" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="password" placeholder="Enter your password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition duration-200">Login</button>
-            </form>
-        </div>
-    `;
-
-    // Asignamos el evento al formulario que acabamos de pintar
-    const loginForm = document.getElementById('login-form');
-    loginForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const usernameInput = document.getElementById('username').value;
-        const passwordInput = document.getElementById('password').value;
-
-        try {
-            const response = await axios.get(`http://localhost:3001/users?username=${usernameInput}&password=${passwordInput}`);
-            
-            if (response.data.length === 0) {
-                alert("Invalid username or password.");
-                return;
-            }
-
-            const loggedInUser = response.data[0];
-            // Guardamos el usuario en el mini disco duro del navegador
-            localStorage.setItem('currentUser', JSON.stringify(loggedInUser));
-
-            // ¡AQUÍ ESTÁ LA MAGIA! Si el login es correcto, llamamos a la otra función
-            renderDashboard();
-
-        } catch (error) {
-            console.error("Error connecting to server:", error);
-            alert("Connection error.");
-        }
-    });
-}
-
 // ==========================================
 // VISTA 2: PANEL PRINCIPAL (DASHBOARD)
 // ==========================================
 function renderDashboard() {
-    // Recuperamos los datos del usuario que guardamos en el localStorage
     const user = JSON.parse(localStorage.getItem('currentUser'));
 
-    // Si por alguna razón no hay usuario, lo devolvemos al Login (Protección de ruta básica)
     if (!user) {
         renderLogin();
         return;
     }
 
-    // Dibujamos el Dashboard en inglés
     appContainer.innerHTML = `
-        <div class="min-h-screen flex flex-col">
+        <div class="min-h-screen flex flex-col bg-slate-100">
             <nav class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center shadow-md">
                 <h1 class="text-xl font-bold tracking-wide">TicketMaster Dashboard</h1>
                 <div class="flex items-center space-x-4">
@@ -81,14 +25,15 @@ function renderDashboard() {
 
             <main class="p-6 flex-1">
                 <div class="max-w-7xl mx-auto">
-                    <h2 class="text-2xl font-bold text-slate-800 mb-4">Welcome to your workspace</h2>
-                    <p class="text-gray-600 mb-6">Here you will manage the technical support cases according to your permissions.</p>
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">Workspace</h2>
+                            <p class="text-gray-600">Manage support cases according to your profile permissions.</p>
+                        </div>
+                        </div>
                     
                     <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
-                            <p class="text-gray-400 text-center italic">Loading support tickets...</p>
                         </div>
-                    </div>
                 </div>
             </main>
         </div>
@@ -96,22 +41,162 @@ function renderDashboard() {
 
     // Escuchamos el botón de Logout
     document.getElementById('logout-btn').addEventListener('click', () => {
-        // Borramos el usuario del localStorage
         localStorage.removeItem('currentUser');
-        // Volvemos a pintar el Login inmediatamente
         renderLogin();
     });
+
+    // ¡NUEVO! Ejecutamos la función para traer los tickets del puerto 3002
+    fetchAndRenderTickets(user);
 }
 
 // ==========================================
-// INICIALIZACIÓN DE LA APP AT REFRESH
+// FUNCIÓN NUEVA: SOLICITAR Y PINTAR TICKETS
 // ==========================================
-// Cuando la página se carga por primera vez, verificamos si ya había una sesión guardada
-const savedUser = localStorage.getItem('currentUser');
-if (savedUser) {
-    // Si ya estaba logueado, va directo al Dashboard
-    renderDashboard();
-} else {
-    // Si no, ve al Login
-    renderLogin();
+async function fetchAndRenderTickets(user) {
+    const ticketsContainer = document.getElementById('tickets-container');
+    
+    try {
+        // 1. Hacemos la petición al puerto 3002 (tickets.json)
+        const response = await axios.get('http://localhost:3002/tickets');
+        const allTickets = response.data;
+
+        // 2. Filtramos los tickets según las reglas de negocio (Roles)
+        let filteredTickets = [];
+        
+        if (user.role === 'admin') {
+            // El administrador ve absolutamente todo
+            filteredTickets = allTickets;
+        } else if (user.role === 'tecnico') {
+            // El técnico solo ve los tickets donde su username coincida con el asignado
+            filteredTickets = allTickets.filter(ticket => ticket.assignedTo === user.username);
+        }
+
+        // 3. Si no hay tickets para mostrar, ponemos un aviso limpio
+        if (filteredTickets.length === 0) {
+            ticketsContainer.innerHTML = `
+                <div class="col-span-full bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500 italic">
+                    No tickets found for your account.
+                </div>
+            `;
+            return;
+        }
+
+        // 4. Limpiamos el contenedor y mapeamos las tarjetas con Tailwind CSS
+        ticketsContainer.innerHTML = '';
+        filteredTickets.forEach(ticket => {
+            ticketsContainer.innerHTML += `
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-200 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-800 uppercase">
+                                ${ticket.type}
+                            </span>
+                            <span class="text-xs text-gray-400">ID: #${ticket.id}</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-800 mb-2">${ticket.title}</h3>
+                        <p class="text-sm text-gray-600 mb-4">${ticket.description}</p>
+                    </div>
+                    
+                    <div class="border-t pt-3 flex justify-between items-center text-xs text-gray-500">
+                        <span>Assigned to: <strong class="text-slate-700">${ticket.assignedTo || 'Unassigned'}</strong></span>
+                        <span class="font-semibold px-2 py-0.5 rounded ${ticket.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                            ${ticket.status.toUpperCase()}
+                        </span>
+                    </div>
+                </div>
+            `;
+        });
+
+    } catch (error) {
+        console.error("Error fetching tickets:", error);
+        ticketsContainer.innerHTML = `
+            <div class="col-span-full bg-red-50 p-6 rounded-lg border border-red-200 text-center text-red-600 font-medium">
+                Failed to load tickets. Please verify server on port 3002.
+            </div>
+        `;
+    }
+}
+
+// ==========================================
+// FUNCIÓN NUEVA: MOSTRAR FORMULARIO DE CREACIÓN
+// ==========================================
+function renderCreateTicketForm() {
+    // Reemplazamos el contenido del contenedor de tickets por el formulario
+    const ticketsContainer = document.getElementById('tickets-container');
+    
+    ticketsContainer.innerHTML = `
+        <div class="col-span-full bg-white p-6 rounded-lg shadow border border-gray-200 max-w-lg mx-auto">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">Create New Support Ticket</h3>
+            
+            <form id="create-ticket-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ticket Title</label>
+                    <input type="text" id="ticket-title" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: My computer won't turn on">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Category / Type</label>
+                    <select id="ticket-type" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="error">Error / Bug</option>
+                        <option value="tarea">Task / Request</option>
+                        <option value="soporte">Technical Support</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="ticket-description" rows="4" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe the issue in detail..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" id="cancel-ticket-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-sm font-medium transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition">
+                        Save Ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    // Botón Cancelar: vuelve a cargar el Dashboard normal
+    document.getElementById('cancel-ticket-btn').addEventListener('click', () => {
+        renderDashboard();
+    });
+
+    // Escuchamos el envío del formulario
+    document.getElementById('create-ticket-form').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Evitamos que la página se recargue
+
+        // Capturamos los datos que escribió el usuario
+        const title = document.getElementById('ticket-title').value;
+        const type = document.getElementById('ticket-type').value;
+        const description = document.getElementById('ticket-description').value;
+        
+        // Obtenemos quién está creando el ticket desde el localStorage
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+
+        // Creamos el objeto del nuevo ticket
+        const newTicket = {
+            title: title,
+            type: type,
+            description: description,
+            status: "open",
+            assignedTo: "unassigned", // Por defecto inicia sin técnico asignado
+            createdBy: user.username   // Guardamos quién lo reportó
+        };
+
+        try {
+            // 🚀 Enviamos el ticket al puerto 3002 con el método POST
+            await axios.post('http://localhost:3002/tickets', newTicket);
+            
+            alert("Ticket created successfully!");
+            renderDashboard(); // Volvemos al panel para ver el nuevo ticket listado
+            
+        } catch (error) {
+            console.error("Error creating ticket:", error);
+            alert("Failed to create ticket. Is the server on port 3002 running?");
+        }
+    });
 }
