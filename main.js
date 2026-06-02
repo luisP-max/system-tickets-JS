@@ -1,4 +1,70 @@
 // ==========================================
+// CONFIGURACIÓN INICIAL Y VARIABLES GLOBALES
+// ==========================================
+const appContainer = document.getElementById('app');
+
+// ==========================================
+// VISTA 1: PANTALLA DE INICIO DE SESIÓN (LOGIN)
+// ==========================================
+function renderLogin() {
+    appContainer.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
+            <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-2xl">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Sign In</h2>
+                    <p class="text-sm text-gray-500 mt-2">Ticket Management System</p>
+                </div>
+                
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Username</label>
+                        <input type="text" id="username" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Enter your username">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+                        <input type="password" id="password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="••••••••">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                        Login
+                    </button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    // Escuchamos el envío del formulario
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const usernameInput = document.getElementById('username').value.trim();
+        const passwordInput = document.getElementById('password').value.trim();
+
+        try {
+            // Petición al puerto 3001 (auth-db)
+            const response = await axios.get('http://localhost:3001/auth-db');
+            const users = response.data;
+
+            // Buscamos si el usuario y la contraseña coinciden
+            const validUser = users.find(u => u.username === usernameInput && u.password === passwordInput);
+
+            if (validUser) {
+                // Guardamos la sesión localmente
+                localStorage.setItem('currentUser', JSON.stringify(validUser));
+                // Redireccionamos al Dashboard
+                renderDashboard();
+            } else {
+                alert("Invalid username or password. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error connecting to auth server:", error);
+            alert("Connection error with port 3001. Is json-server running?");
+        }
+    });
+}
+
+// ==========================================
 // VISTA 2: PANEL PRINCIPAL (DASHBOARD)
 // ==========================================
 function renderDashboard() {
@@ -11,6 +77,7 @@ function renderDashboard() {
 
     appContainer.innerHTML = `
         <div class="min-h-screen flex flex-col bg-slate-100">
+            <!-- Barra de navegación superior -->
             <nav class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center shadow-md">
                 <h1 class="text-xl font-bold tracking-wide">TicketMaster Dashboard</h1>
                 <div class="flex items-center space-x-4">
@@ -23,6 +90,7 @@ function renderDashboard() {
                 </div>
             </nav>
 
+            <!-- Contenido principal -->
             <main class="p-6 flex-1">
                 <div class="max-w-7xl mx-auto">
                     <div class="flex justify-between items-center mb-6">
@@ -35,25 +103,25 @@ function renderDashboard() {
                         </button>
                     </div>
                     
+                    <!-- Contenedor de tarjetas -->
                     <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        </div>
+                        <!-- Las tarjetas se inyectan dinámicamente -->
+                    </div>
                 </div>
             </main>
         </div>
     `;
 
-    // Escuchamos el botón de Logout
     document.getElementById('logout-btn').addEventListener('click', () => {
         localStorage.removeItem('currentUser');
         renderLogin();
     });
 
-    // Escuchamos el botón de Crear Ticket
     document.getElementById('create-ticket-btn').addEventListener('click', () => {
         renderCreateTicketForm();
     });
 
-    // Ejecutamos la función para traer los tickets del puerto 3002
+    // Cargamos los tickets reales
     fetchAndRenderTickets(user);
 }
 
@@ -64,11 +132,9 @@ async function fetchAndRenderTickets(user) {
     const ticketsContainer = document.getElementById('tickets-container');
     
     try {
-        // Hacemos la petición al puerto 3002 (data-db)
         const response = await axios.get('http://localhost:3002/data-db');
         const allTickets = response.data;
 
-        // Filtramos los tickets según las reglas de negocio (Roles)
         let filteredTickets = [];
         
         if (user.role === 'admin') {
